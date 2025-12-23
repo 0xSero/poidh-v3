@@ -208,6 +208,54 @@ Profiles are defined in `foundry.toml`:
 
 For multi-hour fuzzing, run the `long` profile repeatedly (or increase runs/depth further) and keep the machine stable (disable sleep).
 
+## Threat Model & Known Limitations
+
+This section documents attack vectors that are **not exploits** but represent economic griefing, admin risk, or edge cases that may warrant future mitigation.
+
+### Confirmed Griefing Vectors
+
+| Vector | Cost to Attacker | Impact | Mitigation |
+|--------|------------------|--------|------------|
+| **1-wei force voting** | 1 wei + ~50k gas | Any third party can `joinOpenBounty` with dust and permanently flip `everHadExternalContributor=true`, forcing the issuer into voting even after the griefer withdraws. | Add `MIN_CONTRIBUTION_AMOUNT` for `joinOpenBounty`. |
+| **Frontrun join before vote** | Must lock ETH for voting period | Attacker sees `submitClaimForVote` pending and joins right before, gaining vote weight to swing outcome. | Snapshot weights at vote start. |
+| **Claim spam** | Gas only (~250k gas/claim) | Anyone can create unlimited claims per bounty, bloating storage and indexers. | Add claim deposit/bond, per-bounty cap, or let issuer close claims. |
+| **Participant slot exhaustion** | ~0.099 ETH (99 × MIN_BOUNTY) | Attacker fills all 100 participant slots with dust, blocking legitimate high-value contributors. | Minimum contribution per participant, or let issuer close funding. |
+
+### Admin / Configuration Risks
+
+| Risk | Impact | Mitigation |
+|------|--------|------------|
+| **Pause blocks withdraw** | `pause()` blocks all state-changing calls including `withdraw()`; compromised owner can "soft rug" by pausing indefinitely. | Use multisig owner, timelock, or exempt `withdraw()` from pause. |
+| **Wrong treasury address** | `treasury` is immutable; wrong address = permanent fee loss. | Deploy checklist + CI validation; consider upgradeable treasury with timelock. |
+| **Malicious NFT contract** | `poidhNft` is immutable; hostile contract could attempt callback-style grief. | Only deploy with audited `PoidhClaimNFT`; deploy NFT + POIDH as a package. |
+
+### Self-DOS Risks
+
+| Risk | Impact | Mitigation |
+|------|--------|------------|
+| **Receiver revert on withdraw** | If `msg.sender` is a contract that reverts on receiving ETH, `withdraw()` reverts and funds stay pending forever. | Add `withdrawTo(address payable to)` so contracts can redirect to an EOA. |
+
+### MEV / Timing Opportunities
+
+| Opportunity | Impact | Notes |
+|-------------|--------|-------|
+| **Vote resolution timing** | Anyone can call `resolveVote()` after deadline; bots can frontrun resolution. | Generally acceptable (permissionless finalization). Mitigate if needed with commit-reveal voting. |
+
+### Edge Cases Verified
+
+- Issuer cannot withdraw from open bounty (prevents 0-amount bounties)
+- Contract issuers receive NFTs via `transferFrom` (may get stuck if contract lacks transfer capability)
+- Withdrawn contributors cannot vote
+- Issuer can accept any valid claim (not just the first)
+
+### Recommended Future Mitigations
+
+1. **`MIN_CONTRIBUTION_AMOUNT`** for `joinOpenBounty` (e.g., 0.001 ETH) to prevent 1-wei griefing
+2. **Claim deposit/bond** refundable on acceptance, forfeited on spam
+3. **`withdrawTo(address payable to)`** for stuck contracts
+4. **Snapshot weights at vote start** to prevent frontrun vote manipulation
+5. **Multisig + timelock** for owner operations
+
 ## Deployment Checklist (implementation reality)
 
 Implemented:
@@ -220,4 +268,19 @@ Recommended before mainnet:
 - Run Slither + review any findings.
 - Run a long fuzz pass for multiple hours (increase `FOUNDRY_PROFILE=long` parameters as needed).
 - Get an external audit focused on: state machine, griefing, tokenURI trust assumptions, and any downstream integrations.
+- Review the Threat Model above and decide which mitigations to implement.
+
+## Test Coverage Summary
+
+| Test Suite | Tests | Focus |
+|------------|-------|-------|
+| `PoidhV3.unit.t.sol` | 33 | Core functionality |
+| `PoidhV3.attack.t.sol` | 21 | v2 exploit reproduction (all blocked) |
+| `PoidhV3.griefing.t.sol` | 14 | Economic griefing & edge cases |
+| `PoidhV3.coverage.t.sol` | 28 | Edge path coverage |
+| `PoidhV3.fuzz.t.sol` | 2 | Parameterized fuzzing |
+| `PoidhV3.invariant.t.sol` | 4 | Stateful fuzzing (8M+ calls verified) |
+| `PoidhClaimNFT.t.sol` | 4 | NFT contract |
+| `Deploy.t.sol` | 1 | Deployment script |
+| **Total** | **107** | |
 
