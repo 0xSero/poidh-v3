@@ -19,7 +19,7 @@ In-scope contracts:
 - `src/interfaces/IPoidhClaimNFT.sol`
 
 In-scope scripts (recommended):
-- `script/Deploy.s.sol` (deployment wiring, ownership transfer flow)
+- `script/Deploy.s.sol` + `script/deploy/*.s.sol` (deployment wiring)
 
 Out-of-scope (unless explicitly requested):
 - Frontend, indexers/subgraphs, metadata hosting, UI business logic
@@ -56,7 +56,7 @@ forge script script/Simulate.s.sol:Simulate --sig "runSlotExhaustion()"
 - `PoidhClaimNFT`:
   - Minimal ERC721URIStorage.
   - Mints with `_mint` (not `_safeMint`) to avoid ERC721Receiver callback surface.
-  - Owner controls which POIDH contract is authorized to mint via `setPoidh()`.
+  - Immutable minter address set at deployment (no owner/admin).
 
 ### Invariants we care about
 

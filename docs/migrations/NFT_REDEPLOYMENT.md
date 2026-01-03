@@ -1,28 +1,23 @@
-# NFT Redeployment Plan (Lost Owner EOA)
+# NFT Redeployment Plan (Immutable Wiring)
 
 ## Problem Statement
 
-The claim NFT contract (`PoidhClaimNFT` in v3, and the analogous NFT in v2) includes an
-owner-controlled “wiring” function:
+The v3 claim NFT contract (`PoidhClaimNFT`) is **fully immutable** and has no owner or wiring
+function. This means:
 
-- v3: `PoidhClaimNFT.setPoidh(address)`
-
-If the owner EOA key is lost, **the authorized POIDH contract cannot be updated**, which blocks:
-
-- upgrading/migrating to a new POIDH bounty contract, and/or
-- emergency response actions that rely on changing the authorized minter.
+- Upgrading/migrating to a new POIDH bounty contract always requires a new NFT contract.
+- Emergency responses cannot “rewire” mint authority; they require redeploying.
 
 ## Recommended Path: Redeploy a New Claim NFT for v3
 
-Given the owner key is likely unrecoverable, the practical option is:
+Because there is no owner key to rewire mint authority, the practical option is:
 
 1) deploy a new `PoidhClaimNFT` contract (new collection address)
 2) deploy `PoidhV3` pointing at the new NFT
-3) call `setPoidh(PoidhV3)` on the new NFT
-4) transfer NFT ownership to a Safe multisig (or keep in multisig from the start)
+3) update the UI/indexer to the new addresses
 
-This repository’s deploy script already follows this pattern:
-- `script/Deploy.s.sol`
+This repository’s deploy scripts already follow this pattern:
+- `script/Deploy.s.sol` (or `script/deploy/*.s.sol`)
 
 ## Product / UX Implications
 
@@ -35,10 +30,7 @@ This repository’s deploy script already follows this pattern:
 - Announce that v2 claim NFTs are final/limited and that v3 uses a new claim NFT contract.
 - Provide both collection addresses and clearly label them by version/network.
 
-## Key Management Requirement (Non-Negotiable)
+## Key Management Requirement
 
-Before mainnet:
-- Put the new claim NFT owner behind a Safe multisig.
-- Document signer set + threshold.
-- Test the 2-step ownership transfer flow (Ownable2Step).
-
+The NFT has no owner. Secure the deployer key and treasury key; document signer set + threshold
+if treasury is a multisig.

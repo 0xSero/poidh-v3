@@ -7,7 +7,7 @@ This is the process document; for “what to do right now”, see:
 
 | Severity | Definition | Examples |
 |---|---|---|
-| Critical | funds at risk or confirmed loss | theft vector, permanent lock, `setPoidh` hijack |
+| Critical | funds at risk or confirmed loss | theft vector, permanent lock |
 | High | protocol-wide breakage / severe liveness impact | claim acceptance broken, mass stuck withdrawals |
 | Medium | degraded UX / griefing at scale | claim spam wave, participation DoS |
 | Low | minor bug or informational | UI edge case, docs issue |
@@ -18,7 +18,7 @@ This is the process document; for “what to do right now”, see:
 - Onchain lead (contracts / Foundry):
 - Ops lead (monitoring / infra):
 - Comms lead (public updates):
-- Multisig coordinator:
+- Treasury coordinator:
 
 ## Workflow
 
@@ -38,7 +38,7 @@ Inputs:
 ### 3) Contain
 
 - Freeze UI flows.
-- If applicable, execute `PoidhClaimNFT.setPoidh()` to halt/migrate claim minting.
+- Pause indexer ingestion if it is amplifying harm or misinformation.
 - Provide user instructions for safe exit (cancel + withdraw).
 
 ### 4) Eradicate / Fix
@@ -65,4 +65,3 @@ Create a postmortem within 72h:
 
 - Critical/High: initial notice within 30 minutes, updates every 2–4 hours until resolved.
 - Medium: initial notice within 4 hours, daily updates until resolved.
-

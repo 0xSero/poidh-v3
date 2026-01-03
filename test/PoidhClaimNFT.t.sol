@@ -2,31 +2,22 @@
 pragma solidity ^0.8.24;
 
 import "forge-std/Test.sol";
-import {Ownable} from "@openzeppelin/contracts/access/Ownable.sol";
 import {PoidhClaimNFT} from "../src/PoidhClaimNFT.sol";
 
 contract DummyPoidh {}
 
 contract PoidhClaimNFTTest is Test {
   PoidhClaimNFT nft;
-
-  address notOwner = address(0xB0B);
   address poidh;
 
   function setUp() public {
-    nft = new PoidhClaimNFT("poidh claims v3", "POIDH3");
     poidh = address(new DummyPoidh());
+    nft = new PoidhClaimNFT("poidh claims v3", "POIDH3", poidh);
   }
 
-  function test_setPoidh_onlyOwner() public {
-    vm.prank(notOwner);
-    vm.expectRevert(abi.encodeWithSelector(Ownable.OwnableUnauthorizedAccount.selector, notOwner));
-    nft.setPoidh(poidh);
-  }
-
-  function test_setPoidh_reverts_zero_address() public {
+  function test_constructor_reverts_zero_address() public {
     vm.expectRevert(PoidhClaimNFT.InvalidPoidhAddress.selector);
-    nft.setPoidh(address(0));
+    new PoidhClaimNFT("poidh claims v3", "POIDH3", address(0));
   }
 
   function test_mintToEscrow_onlyPoidh() public {
@@ -35,8 +26,6 @@ contract PoidhClaimNFTTest is Test {
   }
 
   function test_mintToEscrow_mints_to_poidh() public {
-    nft.setPoidh(poidh);
-
     vm.prank(poidh);
     nft.mintToEscrow(1, "ipfs://x");
 

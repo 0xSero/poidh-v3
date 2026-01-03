@@ -17,7 +17,9 @@ becomes true and the issuer can no longer direct-accept claims (must go through 
 This can be triggered cheaply by joining with the minimum allowed amount and then withdrawing.
 
 Current parameterization in this repo:
-- `MIN_CONTRIBUTION = 0.00001 ether`
+- `MIN_CONTRIBUTION` is immutable per deployment.
+- Base/Arbitrum/Base Sepolia default: `0.00001 ether`.
+- Degenchain default: `1 ether` (1 DEGEN).
 
 ### Impact
 

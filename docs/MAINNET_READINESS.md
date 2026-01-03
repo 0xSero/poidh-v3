@@ -35,7 +35,7 @@ Runbooks:
 - Incident response: `docs/operations/INCIDENT_RESPONSE.md`
 
 Key requirement:
-- NFT owner key MUST be recoverable and ideally be a Safe multisig (see `docs/migrations/NFT_REDEPLOYMENT.md`).
+- Deployment is immutable; there is no owner key. Plan migrations as full redeployments (`docs/migrations/NFT_REDEPLOYMENT.md`).
 
 ## Phase 3 Product Decisions on Known Issues (Pre-Mainnet)
 
@@ -57,4 +57,3 @@ Goal: bug bounty + process maturity.
 
 - Bug bounty: `docs/operations/BUG_BOUNTY.md`
 - Vulnerability intake: `SECURITY.md`
-

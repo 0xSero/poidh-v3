@@ -10,7 +10,6 @@ Related runbooks:
 ## Goals
 
 - Detect unexpected value movement and anomalous behavior quickly.
-- Detect key-risk events (ownership changes, `setPoidh` changes).
 - Detect UX-killing griefing patterns (claim spam, slot exhaustion trends).
 - Provide enough context to decide: “expected”, “suspicious”, or “incident”.
 
@@ -30,8 +29,7 @@ Related runbooks:
 
 ### PoidhClaimNFT events
 
-- `PoidhSet` *critical*: changes the only “admin gating” controlling who can mint claims.
-- `OwnershipTransferred` / `OwnershipTransferStarted` *critical*: indicates key workflow changes.
+- `Transfer` events (mint-to-escrow and final transfer to bounty issuer).
 
 ## OpenZeppelin Defender (Recommended Setup)
 
@@ -39,14 +37,12 @@ Related runbooks:
 
 Create Sentinels per network (testnet + mainnet) on:
 - `PoidhV3` for: `ClaimAccepted`, `BountyCancelled`, `Withdrawal`
-- `PoidhClaimNFT` for: `PoidhSet`, ownership transfer events
+- `PoidhClaimNFT` for: `Transfer` (optional)
 
 Suggested severity and routing:
 
 | Alert | Severity | Route |
 |---|---|---|
-| `PoidhSet` emitted | Critical | Pager + multisig signers |
-| Ownership change events | Critical | Pager + multisig signers |
 | `ClaimAccepted` (large bounty) | High | Security + ops channel |
 | `Withdrawal` > threshold | High | Ops channel |
 | Unusually high `ClaimCreated` rate | Medium | Ops channel |
@@ -80,14 +76,11 @@ Useful Tenderly alert types:
 
 ### 3) Simulation in triage
 
-For suspicious txs (or for proposed multisig actions), simulate:
+For suspicious txs, simulate:
 - The exact calldata against the current chain state
-- Any follow-up action (e.g., re-wiring `setPoidh` to a new contract)
 
 ## Minimum “Daily” Ops Checks (Post-Launch)
 
 - Confirm indexer health and freshness (events are being ingested).
-- Review last 24h `PoidhSet`/ownership events (should be none in normal operation).
 - Review withdrawals volume vs expected.
 - Review claim creation rate for spam patterns.
-

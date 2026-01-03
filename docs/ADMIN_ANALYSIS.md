@@ -11,9 +11,10 @@ This document provides a complete audit of all administrative/owner functionalit
 | **v2** | PoidhV2.sol | **0** | None |
 | **v2** | PoidhV2Nft.sol | **1** (`setPoidhContract`) | Minimal |
 | **v3** | PoidhV3.sol | **0** | None |
-| **v3** | PoidhClaimNFT.sol | **1** (`setPoidh`) | Minimal |
+| **v3** | PoidhClaimNFT.sol | **0** | None |
 
-**Both versions are essentially trustless** - the only admin power is wiring the NFT contract to accept mints from the bounty contract.
+**V3 is fully immutable** - there is no owner and no admin wiring function. The claim NFT is
+configured at deployment and cannot be changed afterward.
 
 ---
 
@@ -119,29 +120,18 @@ import {IPoidhClaimNFT} from "./interfaces/IPoidhClaimNFT.sol";
 ```solidity
 import {ERC721} from "@openzeppelin/contracts/token/ERC721/ERC721.sol";
 import {ERC721URIStorage} from "@openzeppelin/contracts/token/ERC721/extensions/ERC721URIStorage.sol";
-import {Ownable} from "@openzeppelin/contracts/access/Ownable.sol";
-import {Ownable2Step} from "@openzeppelin/contracts/access/Ownable2Step.sol";
 import {IPoidhClaimNFT} from "./interfaces/IPoidhClaimNFT.sol";
 ```
 
 **Admin Analysis:**
 | Feature | Present | Notes |
 |---------|---------|-------|
-| `Ownable2Step` inheritance | ✅ Yes | Contract inherits it |
-| Owner-only functions | ✅ Yes | **1 function** |
+| `Ownable*` inheritance | ❌ No | No owner/admin |
+| Owner-only functions | ❌ No | None |
 
-**The ONLY admin function:**
-```solidity
-function setPoidh(address newPoidh) external {
-    _checkOwner();
-    if (newPoidh == address(0)) revert InvalidPoidhAddress();
-    emit PoidhSet(poidh, newPoidh);
-    poidh = newPoidh;
-}
-```
-
-**What it does:**
-- Sets which contract can mint claim NFTs
+**Immutable wiring (constructor-only):**
+- `poidh` is an immutable address set at deployment.
+- There is **no** `setPoidh()` and no ownership surface.
 
 **What it CANNOT do:**
 - Cannot steal user funds (funds are in PoidhV3, not NFT contract)
@@ -151,10 +141,8 @@ function setPoidh(address newPoidh) external {
 - Cannot modify existing bounties/claims
 - Cannot burn or transfer user NFTs
 
-**Risk:** If owner is compromised, attacker could:
-1. Disable minting by setting `poidh = address(0)` (but rejected by check)
-2. Set `poidh` to a malicious contract that mints fake claim NFTs
-3. **Cannot steal funds** - funds are in PoidhV3 which has no admin functions
+**Risk:** If deployment is misconfigured, there is no admin lever to fix it.
+Recovery requires deploying a new NFT contract (and PoidhV3) and updating the UI/indexer.
 
 ---
 
@@ -166,64 +154,30 @@ function setPoidh(address newPoidh) external {
 | Pause protocol | ❌ | ❌ | ❌ | ❌ |
 | Change fee % | ❌ | ❌ | ❌ | ❌ |
 | Change treasury | ❌ | ❌ | ❌ | ❌ |
-| Block new mints | ❌ | ✅ | ❌ | ✅ |
-| Enable rogue minter | ❌ | ✅ | ❌ | ✅ |
+| Block new mints | ❌ | ✅ | ❌ | ❌ |
+| Enable rogue minter | ❌ | ✅ | ❌ | ❌ |
 | Upgrade contract | ❌ | ❌ | ❌ | ❌ |
 
 ---
 
 ## Recommendations for V3
 
-### Option 1: Keep Current Design (Recommended)
+### Deployment determinism (required)
 
-**Pros:**
-- `setPoidh()` needed for initial deployment wiring
-- Allows recovery if PoidhV3 needs to be redeployed
-- Matches v2's minimal admin model
+- Compute the PoidhV3 address before deploying `PoidhClaimNFT`.
+- Deploy the NFT with the immutable `poidh` address, then deploy PoidhV3.
+- Verify `PoidhClaimNFT.poidh()` matches the deployed PoidhV3 address.
 
-**Cons:**
-- NFT owner could theoretically enable a malicious minter
+### Operational implication
 
-**Mitigations:**
-1. Use a multisig for NFT ownership
-2. Add a timelock before `setPoidh` takes effect
-3. Consider renouncing ownership after deployment is stable
+- There is **no** owner key to recover or use for migration.
+- Any migration requires **deploying a new NFT + PoidhV3 pair** and updating the UI/indexer.
+- Migration notes and comms guidance:
+  - `docs/migrations/NFT_REDEPLOYMENT.md`
 
-### Operational Footgun: Lost Owner Key (Migration Blocker)
+### Status: Fully Immutable (Implemented)
 
-The single biggest real-world risk with the current minimal-admin design is not “malicious admin”,
-it’s **operational key loss**:
-
-- If the `PoidhClaimNFT` owner key is lost, `setPoidh()` can never be called again.
-- This prevents:
-  - migrating to a new POIDH contract (v3 → v4),
-  - emergency “halt claim minting” actions that rely on re-wiring,
-  - repairing a misconfigured initial deployment.
-
-**Implication:** in the “lost key” scenario, the only practical path is to **deploy a new claim NFT
-contract** and point the new POIDH contract at it (a new collection address).
-
-Migration notes and comms guidance:
-- `docs/migrations/NFT_REDEPLOYMENT.md`
-
-### Option 2: Renounce NFT Ownership After Deployment
-
-```solidity
-// After deployment and testing:
-nft.renounceOwnership();
-```
-
-**Pros:**
-- Fully trustless - no one can change the minter
-- Maximum decentralization
-
-**Cons:**
-- Cannot recover if PoidhV3 has a critical bug requiring redeployment
-- Cannot upgrade to PoidhV4 without deploying a new NFT contract
-
-### Status: PoidhV3 Has No Owner (Implemented)
-
-This repo’s `PoidhV3` does not inherit `Ownable`/`Ownable2Step` and has no admin key surface.
+This repo’s `PoidhV3` and `PoidhClaimNFT` have no owner/admin surface.
 
 ---
 
@@ -237,7 +191,7 @@ This repo’s `PoidhV3` does not inherit `Ownable`/`Ownable2Step` and has no adm
 **V3 matches V2's minimal admin model:**
 - No pause functionality (removed)
 - No admin withdraw
-- Only a single `setPoidh()` function on the NFT
+- No admin wiring or owner surface on the NFT
 - `PoidhV3.sol` has no owner/admin surface
 
-**The only admin power in either version is controlling which contract can mint claim NFTs.** This is needed for deployment but could be renounced afterward for full trustlessness.
+**In v3 there are no admin powers at all.** Claim NFT minting is wired once at deployment and is immutable thereafter.

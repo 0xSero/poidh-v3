@@ -1,11 +1,11 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.24;
 
-import "forge-std/Test.sol";
+import {PoidhDeployHelper} from "./utils/PoidhDeployHelper.sol";
 import {PoidhV3} from "../src/PoidhV3.sol";
 import {PoidhClaimNFT} from "../src/PoidhClaimNFT.sol";
 
-contract PoidhV3Test is Test {
+contract PoidhV3Test is PoidhDeployHelper {
   PoidhV3 poidh;
   PoidhClaimNFT nft;
 
@@ -20,9 +20,7 @@ contract PoidhV3Test is Test {
     claimant = makeAddr("claimant");
     contributor = makeAddr("contributor");
 
-    nft = new PoidhClaimNFT("poidh claims v3", "POIDH3");
-    poidh = new PoidhV3(address(nft), treasury, 1);
-    nft.setPoidh(address(poidh));
+    (poidh, nft) = deployPoidh(treasury, 1);
 
     vm.deal(issuer, 10 ether);
     vm.deal(claimant, 10 ether);

@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.24;
 
-import "forge-std/Test.sol";
+import {PoidhDeployHelper} from "./utils/PoidhDeployHelper.sol";
 import {PoidhV3} from "../src/PoidhV3.sol";
 import {PoidhClaimNFT} from "../src/PoidhClaimNFT.sol";
 
@@ -72,7 +72,7 @@ contract ContractIssuer {
 // ============================================================================
 // MAIN TEST CONTRACT
 // ============================================================================
-contract PoidhV3GriefingTest is Test {
+contract PoidhV3GriefingTest is PoidhDeployHelper {
   PoidhV3 public poidh;
   PoidhClaimNFT public nft;
 
@@ -88,9 +88,7 @@ contract PoidhV3GriefingTest is Test {
     vm.deal(issuer, 100 ether);
     vm.deal(claimant, 100 ether);
 
-    nft = new PoidhClaimNFT("poidh claims v3", "POIDH3");
-    poidh = new PoidhV3(address(nft), treasury, 1);
-    nft.setPoidh(address(poidh));
+    (poidh, nft) = deployPoidh(treasury, 1);
   }
 
   // ========================================================================
@@ -203,9 +201,7 @@ contract PoidhV3GriefingTest is Test {
     // Deploy with wrong treasury (e.g., zero address blocked, but typo address isn't)
     address wrongTreasury = address(0xdead);
 
-    PoidhClaimNFT newNft = new PoidhClaimNFT("test", "TEST");
-    PoidhV3 badPoidh = new PoidhV3(address(newNft), wrongTreasury, 1);
-    newNft.setPoidh(address(badPoidh));
+    (PoidhV3 badPoidh,) = deployPoidh(wrongTreasury, 1);
 
     // Fees will go to wrong address forever (immutable)
     assertEq(badPoidh.treasury(), wrongTreasury);

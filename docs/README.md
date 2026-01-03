@@ -8,6 +8,7 @@ This folder contains security, audit, deployment, and operations documentation f
 - `docs/SCOPE_OF_WORK.md` external audit scope + high-level checklist
 - `docs/POIDH_V3_SECURITY_REPORT.md` deep security review (not a formal audit)
 - `docs/ADMIN_ANALYSIS.md` admin/owner powers and key risks
+- `docs/integration.md` integration guide + UX flows
 
 ## Audit
 
@@ -17,6 +18,9 @@ This folder contains security, audit, deployment, and operations documentation f
 
 - `docs/deployment/TESTNET_TO_MAINNET_CHECKLIST.md` end-to-end deployment checklist + commands
 - `docs/deployment/BASE_SEPOLIA.md` Base Sepolia-specific deploy notes (RPC + BaseScan config)
+- `docs/deployment/BASE.md` Base mainnet deploy notes
+- `docs/deployment/ARBITRUM.md` Arbitrum mainnet deploy notes
+- `docs/deployment/DEGENCHAIN.md` Degenchain deploy notes
 
 ## Operations
 
@@ -31,4 +35,4 @@ This folder contains security, audit, deployment, and operations documentation f
 
 ## Migrations
 
-- `docs/migrations/NFT_REDEPLOYMENT.md` plan for “lost NFT owner EOA” + redeploy implications
+- `docs/migrations/NFT_REDEPLOYMENT.md` plan for immutable wiring + redeploy implications

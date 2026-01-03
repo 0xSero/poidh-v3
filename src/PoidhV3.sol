@@ -17,8 +17,8 @@ contract PoidhV3 is ReentrancyGuard {
   uint256 public constant FEE_BPS = 250; // 2.5%
   uint256 public constant BPS_DENOM = 10_000;
 
-  uint256 public constant MIN_BOUNTY_AMOUNT = 0.001 ether;
-  uint256 public constant MIN_CONTRIBUTION = 0.000_01 ether;
+  uint256 public immutable MIN_BOUNTY_AMOUNT;
+  uint256 public immutable MIN_CONTRIBUTION;
 
   /// @notice Max participant slots for an open bounty (issuer included at slot 0).
   uint256 public constant MAX_PARTICIPANTS = 150;
@@ -216,6 +216,8 @@ contract PoidhV3 is ReentrancyGuard {
   error InvalidPoidhNft(address poidhNft);
   error InvalidWithdrawTo(address to);
   error DirectEtherNotAccepted();
+  error InvalidMinBountyAmount(uint256 amount);
+  error InvalidMinContribution(uint256 amount);
 
   /// =========================
   /// === Internal Requires ===
@@ -255,16 +257,28 @@ contract PoidhV3 is ReentrancyGuard {
   /// =====================
   /// === Initialization ===
   /// =====================
-  /// @param _poidhNft The claim NFT contract (must be deployed).
+  /// @param _poidhNft The claim NFT contract address.
   /// @param _treasury Fee recipient (credited via pull withdrawals).
   /// @param _startClaimIndex The first real claim id; must be `>= 1` (claim id `0` is reserved).
-  constructor(address _poidhNft, address _treasury, uint256 _startClaimIndex) {
+  /// @param _minBountyAmount Minimum bounty value for creation.
+  /// @param _minContribution Minimum contribution for joining open bounties.
+  constructor(
+    address _poidhNft,
+    address _treasury,
+    uint256 _startClaimIndex,
+    uint256 _minBountyAmount,
+    uint256 _minContribution
+  ) {
     if (_treasury == address(0)) revert InvalidTreasury(_treasury);
     if (_poidhNft == address(0) || _poidhNft.code.length == 0) revert InvalidPoidhNft(_poidhNft);
     if (_startClaimIndex == 0) revert InvalidStartClaimIndex();
+    if (_minBountyAmount == 0) revert InvalidMinBountyAmount(_minBountyAmount);
+    if (_minContribution == 0) revert InvalidMinContribution(_minContribution);
 
     poidhNft = IPoidhClaimNFT(_poidhNft);
     treasury = _treasury;
+    MIN_BOUNTY_AMOUNT = _minBountyAmount;
+    MIN_CONTRIBUTION = _minContribution;
 
     // Reserve claimId 0..(_startClaimIndex-1) as sentinels by pre-filling.
     claimCounter = _startClaimIndex;

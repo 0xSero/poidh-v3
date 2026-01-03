@@ -47,14 +47,22 @@ Example (edit addresses/params inside the script):
 export POIDH_TREASURY=0x...
 export POIDH_START_CLAIM_INDEX=1
 # optional
-export POIDH_MULTISIG=0x...
+export POIDH_MIN_BOUNTY_AMOUNT=1000000000000000
+export POIDH_MIN_CONTRIBUTION=10000000000000
 export POIDH_NFT_NAME="poidh claims v3"
 export POIDH_NFT_SYMBOL="POIDH3"
+export DEPLOYER_PK="0x..."
 
 forge script script/Deploy.s.sol:Deploy --rpc-url <RPC_URL> --private-key <PK> --broadcast --verify
 ```
 
 Note: `POIDH_START_CLAIM_INDEX` must be `>= 1` (claimId `0` is reserved as a sentinel).
+
+Chain-specific deploy scripts:
+- Base: `script/deploy/Base.s.sol:DeployBase`
+- Arbitrum: `script/deploy/Arbitrum.s.sol:DeployArbitrum`
+- Degenchain: `script/deploy/Degenchain.s.sol:DeployDegenchain`
+- Base Sepolia: `script/deploy/BaseSepolia.s.sol:DeployBaseSepolia`
 
 ## Simulations
 

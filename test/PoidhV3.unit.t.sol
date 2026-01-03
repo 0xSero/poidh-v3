@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.24;
 
-import "forge-std/Test.sol";
+import {PoidhDeployHelper} from "./utils/PoidhDeployHelper.sol";
 import {ReentrancyGuard} from "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
 import {PoidhV3} from "../src/PoidhV3.sol";
 import {PoidhClaimNFT} from "../src/PoidhClaimNFT.sol";
@@ -73,7 +73,7 @@ contract ReenteringWithdrawReceiver {
   }
 }
 
-contract PoidhV3UnitTest is Test {
+contract PoidhV3UnitTest is PoidhDeployHelper {
   PoidhV3 poidh;
   PoidhClaimNFT nft;
 
@@ -94,9 +94,7 @@ contract PoidhV3UnitTest is Test {
     contributor = makeAddr("contributor");
     contributor2 = makeAddr("contributor2");
 
-    nft = new PoidhClaimNFT("poidh claims v3", "POIDH3");
-    poidh = new PoidhV3(address(nft), treasury, 1);
-    nft.setPoidh(address(poidh));
+    (poidh, nft) = deployPoidh(treasury, 1);
 
     vm.deal(issuer, 1000 ether);
     vm.deal(claimant, 1000 ether);
@@ -106,15 +104,39 @@ contract PoidhV3UnitTest is Test {
   }
 
   function test_constructor_reverts_treasury_zero() public {
-    PoidhClaimNFT localNft = new PoidhClaimNFT("poidh claims v3", "POIDH3");
+    PoidhClaimNFT localNft = new PoidhClaimNFT("poidh claims v3", "POIDH3", address(0xBEEF));
     vm.expectRevert(abi.encodeWithSelector(PoidhV3.InvalidTreasury.selector, address(0)));
-    new PoidhV3(address(localNft), address(0), 1);
+    new PoidhV3(
+      address(localNft),
+      address(0),
+      1,
+      DEFAULT_MIN_BOUNTY_AMOUNT,
+      DEFAULT_MIN_CONTRIBUTION
+    );
   }
 
   function test_constructor_reverts_startClaimIndex_zero() public {
-    PoidhClaimNFT localNft = new PoidhClaimNFT("poidh claims v3", "POIDH3");
+    PoidhClaimNFT localNft = new PoidhClaimNFT("poidh claims v3", "POIDH3", address(0xBEEF));
     vm.expectRevert(PoidhV3.InvalidStartClaimIndex.selector);
-    new PoidhV3(address(localNft), treasury, 0);
+    new PoidhV3(
+      address(localNft),
+      treasury,
+      0,
+      DEFAULT_MIN_BOUNTY_AMOUNT,
+      DEFAULT_MIN_CONTRIBUTION
+    );
+  }
+
+  function test_constructor_reverts_minBounty_zero() public {
+    PoidhClaimNFT localNft = new PoidhClaimNFT("poidh claims v3", "POIDH3", address(0xBEEF));
+    vm.expectRevert(abi.encodeWithSelector(PoidhV3.InvalidMinBountyAmount.selector, 0));
+    new PoidhV3(address(localNft), treasury, 1, 0, DEFAULT_MIN_CONTRIBUTION);
+  }
+
+  function test_constructor_reverts_minContribution_zero() public {
+    PoidhClaimNFT localNft = new PoidhClaimNFT("poidh claims v3", "POIDH3", address(0xBEEF));
+    vm.expectRevert(abi.encodeWithSelector(PoidhV3.InvalidMinContribution.selector, 0));
+    new PoidhV3(address(localNft), treasury, 1, DEFAULT_MIN_BOUNTY_AMOUNT, 0);
   }
 
   function test_contracts_cannot_create_bounties() public {
@@ -137,13 +159,14 @@ contract PoidhV3UnitTest is Test {
     // Try to join with less than minimum
     address joiner = makeAddr("joiner");
     vm.deal(joiner, 1 ether);
+    uint256 min = poidh.MIN_CONTRIBUTION();
     vm.prank(joiner);
     vm.expectRevert(PoidhV3.MinimumContributionNotMet.selector);
-    poidh.joinOpenBounty{value: 0.000_001 ether}(0);
+    poidh.joinOpenBounty{value: min - 1}(0);
 
     // Join with minimum works
     vm.prank(joiner);
-    poidh.joinOpenBounty{value: 0.000_01 ether}(0);
+    poidh.joinOpenBounty{value: min}(0);
   }
 
   function test_createSoloBounty_reverts_noEther() public {

@@ -104,7 +104,7 @@ This table compares the exploited v2 design described in the spec to v3 as imple
 | Open bounty cancel refunds | Refund loop with external calls | No external refund loop; issuer refunded, contributors self-claim refunds | Eliminates loop reentrancy + gas-limit DoS |
 | Voting double-vote prevention | Typical patterns require looping/resetting `hasVoted` | `voteRound` + `lastVotedRound` mapping | No O(n) resets; prevents double voting per round |
 | Voting liveness | Resolution might be issuer-only (varies by design) | Permissionless `resolveVote()` | Removes “issuer must be online” dependency |
-| Minimum bounty amount | No minimum (per spec concern) | Enforced `MIN_BOUNTY_AMOUNT` on bounty creation | Reduces dust spam of bounties |
+| Minimum bounty amount | No minimum (per spec concern) | Enforced `MIN_BOUNTY_AMOUNT` (immutable per deployment) | Reduces dust spam of bounties |
 | Participant growth | Unbounded arrays (spec concern) | `MAX_PARTICIPANTS` cap; vacated slots are reused | Bounds contributor list size; “cap fill” griefing still exists while capital is locked |
 | Treasury configuration | Often mutable | Immutable `treasury` | Reduces governance/upgrade risk; increases misconfig risk |
 | Vote state representation | Typically separate boolean state | `bountyCurrentVotingClaim==0` sentinel; claimId `0` reserved | Simplifies vote-state checks; introduces deploy/indexer footgun |
@@ -119,7 +119,7 @@ This repo was built to match the POIDH v3 rebuild spec’s *security properties*
 | Strict CEI | Yes | State is finalized before external calls; most flows have no external calls |
 | Pull payments | Yes | `pendingWithdrawals` + `withdraw()` / `withdrawTo()` in `src/PoidhV3.sol` |
 | Bounded iteration / gas safety | Partial | `MAX_PARTICIPANTS` caps participants; cancellation avoids refund loops; claim spam remains possible |
-| Ownable2Step | Partial | `PoidhClaimNFT` uses `Ownable2Step` (for `setPoidh()` ownership). `PoidhV3` has no owner/admin surface. |
+| Ownable2Step | No | `PoidhClaimNFT` has no owner; minter address is immutable at deployment. |
 | NFT callback avoidance | Yes | `_mint` + `transferFrom` in `src/PoidhClaimNFT.sol` / `src/PoidhV3.sol` |
 
 Note: the spec suggested a separate vault; this implementation keeps escrow + ledger inside `PoidhV3` to reduce cross-contract complexity.
@@ -179,13 +179,11 @@ These are real, expected risks in an open system. They don’t typically allow t
 
 ## Admin / trust / “open system” considerations
 
-v3 reduces governance surface, but it is not “fully trustless” because the claim NFT contract has an owner that can rewire the authorized minter.
+v3 is fully immutable: there is no owner and no admin wiring function on the claim NFT.
 
 ### Admin powers in this repo
 
-| Control | Where | Power | Risk | How to minimize centralization |
-|---|---|---|---|---|
-| `setPoidh()` | `src/PoidhClaimNFT.sol` | Can change which POIDH contract can mint | Can brick claim creation; can mint from new POIDH | Transfer NFT ownership to multisig and/or renounce after wiring |
+None.
 
 ### What admin cannot do (in this design)
 
@@ -311,9 +309,9 @@ If “production ready” includes not just theft-safety but also acceptable liv
    - claim spam,
    - participant cap fill / temporary join blocking,
    - join-before-vote MEV.
-2. Decide the governance stance:
-   - multisig + timelock (recommended),
-   - eventual ownership renounce for `PoidhClaimNFT` (optional, but makes incident response harder).
+2. Confirm the immutable governance stance:
+   - no admin keys or onchain levers,
+   - migrations require deploying a new NFT + PoidhV3 pair and updating UI/indexers.
 3. Run static analysis (Slither) + long fuzzing repeatedly; then get an external audit focused on:
    - state machine correctness,
    - griefing/liveness,

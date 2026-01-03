@@ -1,14 +1,28 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.24;
 
-import "forge-std/Test.sol";
+import {PoidhDeployHelper} from "./utils/PoidhDeployHelper.sol";
 import {PoidhV3} from "../src/PoidhV3.sol";
 import {PoidhClaimNFT} from "../src/PoidhClaimNFT.sol";
+
+contract PoidhV3Harness is PoidhV3 {
+  constructor(
+    address poidhNft_,
+    address treasury_,
+    uint256 startClaimIndex_,
+    uint256 minBountyAmount_,
+    uint256 minContribution_
+  ) PoidhV3(poidhNft_, treasury_, startClaimIndex_, minBountyAmount_, minContribution_) {}
+
+  function forceSetClaimAccepted(uint256 claimId, bool accepted) external {
+    claims[claimId].accepted = accepted;
+  }
+}
 
 /// @notice Extra/edge-case tests that exercise defensive branches and deployment footguns.
 /// @dev This suite intentionally avoids storage-slot corruption tests to keep the tests robust
 /// against future storage layout changes.
-contract PoidhV3CoverageTest is Test {
+contract PoidhV3CoverageTest is PoidhDeployHelper {
   PoidhV3 poidh;
   PoidhClaimNFT nft;
 
@@ -27,9 +41,7 @@ contract PoidhV3CoverageTest is Test {
     contributor = makeAddr("contributor");
     other = makeAddr("other");
 
-    nft = new PoidhClaimNFT("poidh claims v3", "POIDH3");
-    poidh = new PoidhV3(address(nft), treasury, 1);
-    nft.setPoidh(address(poidh));
+    (poidh, nft) = deployPoidh(treasury, 1);
 
     vm.deal(issuer, 10_000 ether);
     vm.deal(claimant, 10_000 ether);
@@ -53,6 +65,22 @@ contract PoidhV3CoverageTest is Test {
     claimId = poidh.claimCounter();
     vm.prank(who);
     poidh.createClaim(bountyId, "claim", "desc", "ipfs://x");
+  }
+
+  function _deployHarness(address treasury_)
+    internal
+    returns (PoidhV3Harness harness, PoidhClaimNFT harnessNft)
+  {
+    uint256 nonce = vm.getNonce(address(this));
+    address predictedPoidh = vm.computeCreateAddress(address(this), nonce + 1);
+    harnessNft = new PoidhClaimNFT("poidh claims v3", "POIDH3", predictedPoidh);
+    harness = new PoidhV3Harness(
+      address(harnessNft),
+      treasury_,
+      1,
+      DEFAULT_MIN_BOUNTY_AMOUNT,
+      DEFAULT_MIN_CONTRIBUTION
+    );
   }
 
   function test_withdraw_reverts_nothingToWithdraw() public {
@@ -159,6 +187,48 @@ contract PoidhV3CoverageTest is Test {
     vm.prank(contributor);
     vm.expectRevert(PoidhV3.NotCancelledOpenBounty.selector);
     poidh.claimRefundFromCancelledOpenBounty(0);
+  }
+
+  function test_submitClaimForVote_reverts_claimAlreadyAccepted_forced() public {
+    (PoidhV3Harness harness,) = _deployHarness(treasury);
+    address localIssuer = makeAddr("localIssuer");
+    address localClaimant = makeAddr("localClaimant");
+
+    vm.deal(localIssuer, 10 ether);
+    vm.deal(localClaimant, 10 ether);
+
+    vm.prank(localIssuer, localIssuer);
+    harness.createOpenBounty{value: 1 ether}("open", "desc");
+
+    vm.prank(localClaimant);
+    harness.createClaim(0, "claim", "desc", "ipfs://x");
+
+    harness.forceSetClaimAccepted(1, true);
+
+    vm.prank(localIssuer);
+    vm.expectRevert(PoidhV3.ClaimAlreadyAccepted.selector);
+    harness.submitClaimForVote(0, 1);
+  }
+
+  function test_acceptClaim_reverts_claimAlreadyAccepted_forced() public {
+    (PoidhV3Harness harness,) = _deployHarness(treasury);
+    address localIssuer = makeAddr("localIssuer2");
+    address localClaimant = makeAddr("localClaimant2");
+
+    vm.deal(localIssuer, 10 ether);
+    vm.deal(localClaimant, 10 ether);
+
+    vm.prank(localIssuer, localIssuer);
+    harness.createSoloBounty{value: 1 ether}("solo", "desc");
+
+    vm.prank(localClaimant);
+    harness.createClaim(0, "claim", "desc", "ipfs://x");
+
+    harness.forceSetClaimAccepted(1, true);
+
+    vm.prank(localIssuer, localIssuer);
+    vm.expectRevert(PoidhV3.ClaimAlreadyAccepted.selector);
+    harness.acceptClaim(0, 1);
   }
 
   // ========================================================================
@@ -445,4 +515,3 @@ contract PoidhV3CoverageTest is Test {
     assertEq(result[9].id, 6);
   }
 }
-

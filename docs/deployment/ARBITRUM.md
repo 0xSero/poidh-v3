@@ -1,19 +1,17 @@
-# Base Sepolia Deployment (PoidhV3 + PoidhClaimNFT)
-
-This repo includes `foundry.toml` aliases for Base Sepolia RPC + BaseScan verification.
+# Arbitrum Deployment (PoidhV3 + PoidhClaimNFT)
 
 ## Prereqs
 
-- Funded deployer EOA on Base Sepolia
+- Funded deployer EOA on Arbitrum
 - `POIDH_TREASURY` address confirmed (immutable in `PoidhV3`)
 - Deployment parameters confirmed (min bounty + min contribution)
-- BaseScan API key (for `--verify`)
+- Explorer API key if using `--verify`
 
 ## Deploy
 
 ```bash
-export BASE_SEPOLIA_RPC_URL="https://…"
-export BASESCAN_API_KEY="…"
+export ARBITRUM_RPC_URL="https://…"
+export ETHERSCAN_API_KEY="…"
 
 export DEPLOYER_PK="0x…"
 export POIDH_TREASURY="0x…"
@@ -23,8 +21,8 @@ export POIDH_START_CLAIM_INDEX=1
 export POIDH_NFT_NAME="poidh claims v3"
 export POIDH_NFT_SYMBOL="POIDH3"
 
-forge script script/deploy/BaseSepolia.s.sol:DeployBaseSepolia \
-  --rpc-url base_sepolia \
+forge script script/deploy/Arbitrum.s.sol:DeployArbitrum \
+  --rpc-url "$ARBITRUM_RPC_URL" \
   --private-key "$DEPLOYER_PK" \
   --broadcast \
   --verify
@@ -37,11 +35,11 @@ Fill these from the script output:
 - `POIDH_NFT=0x…`
 
 ```bash
-cast call "$POIDH_V3" "treasury()(address)" --rpc-url base_sepolia
-cast call "$POIDH_V3" "poidhNft()(address)" --rpc-url base_sepolia
-cast call "$POIDH_NFT" "poidh()(address)" --rpc-url base_sepolia
-cast call "$POIDH_V3" "MIN_BOUNTY_AMOUNT()(uint256)" --rpc-url base_sepolia
-cast call "$POIDH_V3" "MIN_CONTRIBUTION()(uint256)" --rpc-url base_sepolia
+cast call "$POIDH_V3" "treasury()(address)" --rpc-url "$ARBITRUM_RPC_URL"
+cast call "$POIDH_V3" "poidhNft()(address)" --rpc-url "$ARBITRUM_RPC_URL"
+cast call "$POIDH_NFT" "poidh()(address)" --rpc-url "$ARBITRUM_RPC_URL"
+cast call "$POIDH_V3" "MIN_BOUNTY_AMOUNT()(uint256)" --rpc-url "$ARBITRUM_RPC_URL"
+cast call "$POIDH_V3" "MIN_CONTRIBUTION()(uint256)" --rpc-url "$ARBITRUM_RPC_URL"
 ```
 
 Expected:

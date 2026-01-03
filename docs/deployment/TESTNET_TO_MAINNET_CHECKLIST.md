@@ -1,10 +1,10 @@
 # Deployment Runbook Testnet → Mainnet
 
-This is a practical checklist for deploying POIDH v3 and its claim NFT, wiring them, transferring
-ownership to a multisig, and verifying everything on explorers.
+This is a practical checklist for deploying POIDH v3 and its claim NFT, wiring them, and verifying
+everything on explorers.
 
 Primary deploy script:
-- `script/Deploy.s.sol`
+- `script/Deploy.s.sol` (parameterized)
 
 Related docs:
 - Monitoring: `docs/operations/MONITORING.md`
@@ -21,10 +21,8 @@ Related docs:
 - [ ] Code freeze at a specific commit hash (record it in the address registry below)
 - [ ] `forge test` passes locally
 
-### Governance / key management
+### Key management
 
-- [ ] Safe multisig created (recommended: 3/5 or 4/7)
-- [ ] Signers can successfully execute and *accept* an Ownable2Step transfer on testnet (for `PoidhClaimNFT`)
 - [ ] Deployment key is secured and has enough gas funds
 
 ### Tooling
@@ -50,7 +48,8 @@ Related docs:
 
 | Var | Meaning | Notes |
 |---|---|---|
-| `POIDH_MULTISIG` | Safe address | used for ownership transfers (recommended) |
+| `POIDH_MIN_BOUNTY_AMOUNT` | minimum bounty amount | defaults to `0.001 ether` in `script/Deploy.s.sol` |
+| `POIDH_MIN_CONTRIBUTION` | minimum contribution | defaults to `0.00001 ether` in `script/Deploy.s.sol` |
 | `POIDH_NFT_NAME` | claim NFT name | optional (defaults in deploy script) |
 | `POIDH_NFT_SYMBOL` | claim NFT symbol | optional (defaults in deploy script) |
 | `ETHERSCAN_API_KEY` | explorer key | used by Foundry verification on many chains |
@@ -69,7 +68,6 @@ Record *everything* here so you can reproduce, verify, and debug later.
 - `PoidhClaimNFT`:
 - `PoidhV3`:
 - Treasury:
-- Multisig:
 - Deploy tx hash:
 - Deploy block:
 
@@ -81,7 +79,6 @@ Record *everything* here so you can reproduce, verify, and debug later.
 - `PoidhClaimNFT`:
 - `PoidhV3`:
 - Treasury:
-- Multisig:
 - Deploy tx hash:
 - Deploy block:
 
@@ -97,8 +94,8 @@ export DEPLOYER_PK=...
 export POIDH_TREASURY=0x...
 export POIDH_START_CLAIM_INDEX=1
 
-# Optional (recommended)
-export POIDH_MULTISIG=0x...
+export POIDH_MIN_BOUNTY_AMOUNT=1000000000000000
+export POIDH_MIN_CONTRIBUTION=10000000000000
 export ETHERSCAN_API_KEY=...
 
 forge script script/Deploy.s.sol:Deploy \
@@ -121,27 +118,6 @@ Expected:
 - `PoidhClaimNFT.poidh()` matches your deployed `PoidhV3` address
 - `PoidhV3.treasury()` matches `POIDH_TREASURY`
 
-### 3.3 Ownership transfer (recommended)
-
-If you plan to control `setPoidh()` via a multisig (recommended), transfer ownership and confirm
-the multisig can accept it.
-
-```bash
-# Initiate transfer (from deployer)
-cast send $POIDH_NFT "transferOwnership(address)" $POIDH_MULTISIG \
-  --rpc-url "$RPC_URL" --private-key "$DEPLOYER_PK"
-```
-
-Then, from the Safe UI (or via Safe transaction):
-- call `acceptOwnership()` on `PoidhClaimNFT`
-
-Confirm:
-```bash
-cast call $POIDH_NFT "owner()(address)" --rpc-url "$RPC_URL"
-```
-
----
-
 ## 4) Mainnet Deployment (Runbook)
 
 Use the *exact same steps* as testnet.
@@ -149,8 +125,8 @@ Use the *exact same steps* as testnet.
 Additional mainnet-specific checks:
 
 - [ ] Confirm chainId and RPC points at intended network
-- [ ] Confirm treasury is correct and controlled (multisig recommended)
-- [ ] Confirm deployer has *only* the permissions intended (ideally none post-transfer)
+- [ ] Confirm treasury is correct and controlled
+- [ ] Confirm immutable wiring (no admin keys or ownership transfers)
 - [ ] Confirm monitoring is configured immediately after deployment
 
 ---
